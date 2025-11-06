@@ -50,10 +50,10 @@ local.properties
 .settings/
 
 # Externals
-packages/skia/lib
-packages/skia/libs
-packages/skia/cpp/skia
-packages/skia/cpp/dawn
+# packages/skia/lib
+# packages/skia/libs
+# packages/skia/cpp/skia
+# packages/skia/cpp/dawn
 
 # Remotion
 apps/remotion/stills
