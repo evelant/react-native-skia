@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 
@@ -159,6 +160,23 @@ public:
       : JsiSkWrappingHostObject<std::shared_ptr<T>>(std::move(context),
                                                     std::move(object)) {}
 
+  // Thread-safe accessors to avoid races when the underlying shared_ptr
+  // is swapped/read across different threads (e.g., JS and UI runtimes).
+  std::shared_ptr<T> getObject() {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    return JsiSkWrappingHostObject<std::shared_ptr<T>>::getObject();
+  }
+
+  const std::shared_ptr<T> getObject() const {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    return JsiSkWrappingHostObject<std::shared_ptr<T>>::getObject();
+  }
+
+  void setObject(std::shared_ptr<T> object) {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    JsiSkWrappingHostObject<std::shared_ptr<T>>::setObject(std::move(object));
+  }
+
   /**
     Returns the underlying object from a host object of this type
    */
@@ -168,6 +186,9 @@ public:
                obj.asObject(runtime).asHostObject(runtime))
         ->getObject();
   }
+
+private:
+  mutable std::mutex _objectMutex;
 };
 
 template <typename T>
@@ -178,6 +199,23 @@ public:
       : JsiSkWrappingHostObject<sk_sp<T>>(std::move(context),
                                           std::move(object)) {}
 
+  // Thread-safe accessors to avoid races when the underlying sk_sp
+  // is swapped/read across different threads (e.g., JS and UI runtimes).
+  sk_sp<T> getObject() {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    return JsiSkWrappingHostObject<sk_sp<T>>::getObject();
+  }
+
+  const sk_sp<T> getObject() const {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    return JsiSkWrappingHostObject<sk_sp<T>>::getObject();
+  }
+
+  void setObject(sk_sp<T> object) {
+    std::lock_guard<std::mutex> lock(_objectMutex);
+    JsiSkWrappingHostObject<sk_sp<T>>::setObject(std::move(object));
+  }
+
   /**
     Returns the underlying object from a host object of this type
    */
@@ -186,6 +224,9 @@ public:
                obj.asObject(runtime).asHostObject(runtime))
         ->getObject();
   }
+
+private:
+  mutable std::mutex _objectMutex;
 };
 
 } // namespace RNSkia
