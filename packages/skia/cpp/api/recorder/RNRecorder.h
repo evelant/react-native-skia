@@ -357,11 +357,20 @@ public:
       }
 
       case CommandType::SaveLayer: {
+        // Ensure we always have a valid paint. In typical flows, a preceding
+        // RestorePaintDeclaration pushes a paint into paintDeclarations.
+        // However, some layer nodes may not provide a paint declaration.
+        // In that case, fall back to the current materialized paint.
         ctx->materializePaint();
-        auto paint = ctx->paintDeclarations.back();
-        ctx->paintDeclarations.pop_back();
+        SkPaint layerPaint;
+        if (!ctx->paintDeclarations.empty()) {
+          layerPaint = ctx->paintDeclarations.back();
+          ctx->paintDeclarations.pop_back();
+        } else {
+          layerPaint = ctx->getPaint();
+        }
         ctx->canvas->saveLayer(
-            SkCanvas::SaveLayerRec(nullptr, &paint, nullptr, 0));
+            SkCanvas::SaveLayerRec(nullptr, &layerPaint, nullptr, 0));
         break;
       }
 
