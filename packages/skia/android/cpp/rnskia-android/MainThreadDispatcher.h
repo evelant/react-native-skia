@@ -32,28 +32,20 @@ private:
   static constexpr int LOOPER_ID_MAIN = 1;
 
   void processMessages() {
-    // Drain the queue in batches without holding the mutex during execution.
-    // This prevents lock inversion with other locks (e.g., JSI runtime) that
-    // tasks might acquire.
-    for (;;) {
-      std::queue<std::function<void()>> local;
-      {
-        std::lock_guard<std::mutex> lock(queueMutex);
-        if (taskQueue.empty()) {
-          break;
-        }
-        std::swap(local, taskQueue);
-      }
+    // Drain a single batch without holding the mutex during execution.
+    // Tasks posted while executing are enqueued and will be picked up by the
+    // next looper wake (posts write to the pipe), which matches the previous
+    // temporal boundary while avoiding lock inversion.
+    std::queue<std::function<void()>> local;
+    {
+      std::lock_guard<std::mutex> lock(queueMutex);
+      std::swap(local, taskQueue);
+    }
 
-      while (!local.empty()) {
-        auto task = std::move(local.front());
-        local.pop();
-        task();
-      }
-
-      // Loop to catch work enqueued by tasks themselves without requiring
-      // another looper wakeup. If nothing new was posted, the next iteration
-      // breaks immediately.
+    while (!local.empty()) {
+      auto task = std::move(local.front());
+      local.pop();
+      task();
     }
   }
 

@@ -103,6 +103,10 @@ public:
   }
 
   void pushImageFilter(DrawingCtx *ctx) {
+    if (ctx->shaders.empty()) {
+      // No shader to use as displacement map input; ignore gracefully
+      return;
+    }
     auto shader = ctx->shaders.back();
     ctx->shaders.pop_back();
     auto map = SkImageFilters::Shader(shader, nullptr);

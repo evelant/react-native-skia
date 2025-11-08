@@ -52,20 +52,30 @@ public:
   }
 
   void setPicture(sk_sp<SkPicture> picture) {
-    _picture = picture;
+    {
+      std::lock_guard<std::mutex> lock(_pictureMutex);
+      _picture = std::move(picture);
+    }
     _requestRedraw();
   }
 
 private:
   bool performDraw(std::shared_ptr<RNSkCanvasProvider> canvasProvider) {
-    return canvasProvider->renderToCanvas([=, this](SkCanvas *canvas) {
+    // Take a thread-safe snapshot of the current picture
+    sk_sp<SkPicture> picture;
+    {
+      std::lock_guard<std::mutex> lock(_pictureMutex);
+      picture = _picture;
+    }
+
+    return canvasProvider->renderToCanvas([=](SkCanvas *canvas) {
       // Make sure to scale correctly
       auto pd = _platformContext->getPixelDensity();
       canvas->clear(SK_ColorTRANSPARENT);
       canvas->save();
       canvas->scale(pd, pd);
-      if (_picture != nullptr) {
-        canvas->drawPicture(_picture);
+      if (picture != nullptr) {
+        canvas->drawPicture(picture);
       }
       canvas->restore();
     });
@@ -73,6 +83,7 @@ private:
 
   std::shared_ptr<RNSkPlatformContext> _platformContext;
   sk_sp<SkPicture> _picture;
+  std::mutex _pictureMutex;
 };
 
 class RNSkPictureView : public RNSkView {
