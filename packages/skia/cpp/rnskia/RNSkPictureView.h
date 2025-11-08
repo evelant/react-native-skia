@@ -68,9 +68,11 @@ private:
       picture = _picture;
     }
 
+    // Also snapshot the pixel density to avoid capturing `this` in the lambda
+    auto pd = _platformContext->getPixelDensity();
+
     return canvasProvider->renderToCanvas([=](SkCanvas *canvas) {
       // Make sure to scale correctly
-      auto pd = _platformContext->getPixelDensity();
       canvas->clear(SK_ColorTRANSPARENT);
       canvas->save();
       canvas->scale(pd, pd);
